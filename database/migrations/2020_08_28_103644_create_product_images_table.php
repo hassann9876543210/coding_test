@@ -15,10 +15,12 @@ class CreateProductImagesTable extends Migration
     {
         Schema::create('product_images', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('product_id')->constrained();
+            // $table->foreignId('product_id')->constrained();
+            $table->unsignedBigInteger('product_id')->index();
             $table->string('file_path');
             $table->boolean('thumbnail')->nullable();
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

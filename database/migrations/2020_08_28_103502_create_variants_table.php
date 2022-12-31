@@ -18,6 +18,7 @@ class CreateVariantsTable extends Migration
             $table->string('title')->unique();
             $table->text('description')->nullable();
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

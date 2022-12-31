@@ -46,37 +46,54 @@
                         <th>Title</th>
                         <th>Description</th>
                         <th>Variant</th>
+                        <th>Price</th>
+                        <th>Stock</th>
                         <th width="150px">Action</th>
                     </tr>
                     </thead>
 
                     <tbody>
 
+                    @foreach($products as $key => $product)
                     <tr>
-                        <td>1</td>
-                        <td>T-Shirt <br> Created at : 25-Aug-2020</td>
-                        <td>Quality product in low cost</td>
+                        <td>{{ $key + 1 }}</td>
+                        <td>{{ $product->title }}, <br> Created at : {{ date('d-m-Y', strtotime($product->created_at )) }}</td>
+                        <td>{{ Str::limit( $product->description, 20) }}</td>
                         <td>
-                            <dl class="row mb-0" style="height: 80px; overflow: hidden" id="variant">
-
-                                <dt class="col-sm-3 pb-0">
-                                    SM/ Red/ V-Nick
-                                </dt>
-                                <dd class="col-sm-9">
-                                    <dl class="row mb-0">
-                                        <dt class="col-sm-4 pb-0">Price : {{ number_format(200,2) }}</dt>
-                                        <dd class="col-sm-8 pb-0">InStock : {{ number_format(50,2) }}</dd>
-                                    </dl>
-                                </dd>
-                            </dl>
-                            <button onclick="$('#variant').toggleClass('h-auto')" class="btn btn-sm btn-link">Show more</button>
+                            @foreach($product->variants as $key => $variant)
+                                {{-- {{ $variant->title ?? '--'}}/ --}}
+                                {{ $variant->pivot->variant }}/
+                            @endforeach
                         </td>
+
+                        <td>
+                            @foreach($product->variantPrices as $key => $price)
+                                @if( $price->product_id == $product->id)
+                                    {{ number_format($price->price, 2) }}/
+                                @endif
+                            @endforeach
+                        </td>
+
+                        <td>
+                            @foreach($product->variantPrices as $key => $stock)
+                                @if( $price->product_id == $product->id)
+                                    {{ number_format($price->stock, 2) }}/
+                                @endif
+                            @endforeach
+                        </td>
+
                         <td>
                             <div class="btn-group btn-group-sm">
-                                <a href="{{ route('product.edit', 1) }}" class="btn btn-success">Edit</a>
+                                <a href="{{ route('product.edit', $product->id) }}" class="btn btn-success">Edit</a>
                             </div>
+                            <div class="btn-group btn-group-sm">
+                                <a href="{{ route('product.show', $product->id) }}" class="btn btn-primary">Show</a>
+                            </div>
+
                         </td>
                     </tr>
+
+                    @endforeach
 
                     </tbody>
 

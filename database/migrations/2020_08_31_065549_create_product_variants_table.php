@@ -16,9 +16,12 @@ class CreateProductVariantsTable extends Migration
         Schema::create('product_variants', function (Blueprint $table) {
             $table->id();
             $table->string('variant');
-            $table->foreignId('variant_id')->constrained()->onDelete('cascade');
-            $table->foreignId('product_id')->constrained()->onDelete('cascade');
+            $table->unsignedBigInteger('product_id')->index();
+            $table->unsignedBigInteger('variant_id')->index();
+            // $table->foreignId('variant_id')->constrained()->onDelete('cascade');
+            // $table->foreignId('product_id')->constrained()->onDelete('cascade');
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

@@ -1,6 +1,9 @@
 @extends('layouts.app')
 
 @section('content')
+<link rel="stylesheet" type="text/css" href="//cdn.datatables.net/1.10.12/css/jquery.dataTables.min.css" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/izitoast/1.4.0/css/iziToast.min.css" integrity="sha512-O03ntXoVqaGUTAeAmvQ2YSzkCvclZEcPQu1eqloPaHfJ5RuNGiS4l+3duaidD801P50J28EHyonCV06CUlTSag==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/2.1.0/css/toastr.css" rel="stylesheet" />
 
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
         <h1 class="h3 mb-0 text-gray-800">Products</h1>
@@ -38,67 +41,22 @@
         </form>
 
         <div class="card-body">
-            <div class="table-response">
-                <table class="table">
+                <table id="data_table" class="table table-bordered table-striped data-table table-hover">
                     <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Title</th>
-                        <th>Description</th>
-                        <th>Variant</th>
-                        <th>Price</th>
-                        <th>Stock</th>
-                        <th width="150px">Action</th>
-                    </tr>
+                        <tr>
+                            <th>SN</th>
+                            <th>Title</th>
+                            <th>Description</th>
+                            <th>Variant</th>
+                            <th>Price</th>
+                            <th>Stock</th>
+                            <th>Action</th>
+                        </tr>
                     </thead>
-
                     <tbody>
 
-                    @foreach($products as $key => $product)
-                    <tr>
-                        <td>{{ $key + 1 }}</td>
-                        <td>{{ $product->title }}, <br> Created at : {{ date('d-m-Y', strtotime($product->created_at )) }}</td>
-                        <td>{{ Str::limit( $product->description, 20) }}</td>
-                        <td>
-                            @foreach($product->variants as $key => $variant)
-                                {{-- {{ $variant->title ?? '--'}}/ --}}
-                                {{ $variant->pivot->variant }}/
-                            @endforeach
-                        </td>
-
-                        <td>
-                            @foreach($product->variantPrices as $key => $price)
-                                @if( $price->product_id == $product->id)
-                                    {{ number_format($price->price, 2) }}/
-                                @endif
-                            @endforeach
-                        </td>
-
-                        <td>
-                            @foreach($product->variantPrices as $key => $stock)
-                                @if( $price->product_id == $product->id)
-                                    {{ number_format($price->stock, 2) }}/
-                                @endif
-                            @endforeach
-                        </td>
-
-                        <td>
-                            <div class="btn-group btn-group-sm">
-                                <a href="{{ route('product.edit', $product->id) }}" class="btn btn-success">Edit</a>
-                            </div>
-                            <div class="btn-group btn-group-sm">
-                                <a href="{{ route('product.show', $product->id) }}" class="btn btn-primary">Show</a>
-                            </div>
-
-                        </td>
-                    </tr>
-
-                    @endforeach
-
                     </tbody>
-
                 </table>
-            </div>
 
         </div>
 
@@ -113,5 +71,114 @@
             </div>
         </div>
     </div>
+
+    <script src="{{ asset('jquery/jQuery.js') }}"></script>
+    <script src="{{ asset('datatable/js/jquery.dataTables.min.js') }}"></script>
+    <script src="{{ asset('datatable/js/dataTables.bootstrap4.min.js') }}"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/izitoast/1.4.0/js/iziToast.min.js" integrity="sha512-Zq9o+E00xhhR/7vJ49mxFNJ0KQw1E1TMWkPTxrWcnpfEFDEXgUiwJHIKit93EW/XxE31HSI5GEOW06G6BF1AtA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/2.1.0/js/toastr.js"></script>
+<script src="https://unpkg.com/sweetalert/dist/sweetalert.min.js"></script>
+
+    <script>
+
+        $.ajaxSetup({
+            headers:{
+                'X-CSRF-TOKEN':$('meta[name="csrf-token"]').attr('content')
+            }
+        });
+
+        var dTable = $('#data_table').DataTable({
+            order: [],
+            lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]],
+            processing: true,
+            responsive: false,
+            serverSide: true,
+            scroller: {
+                loadingIndicator: false
+            },
+            pagingType: "full_numbers",
+            ajax: {
+                url: "{{route('product.index')}}",
+                type: "get"
+            },
+
+            columns: [
+                {data: 'DT_RowIndex', name: 'DT_RowIndex'},
+                {data: 'product_title', name: 'product_title'},
+                {data: 'description', name: 'description'},
+                {data: 'variant_name', name: 'variant_name'},
+                {data: 'variant_price', name: 'variant_price'},
+                {data: 'variant_stock', name: 'variant_stock'},
+                {data: 'action', searchable: false, orderable: false}
+            ],
+
+            });
+
+        // delete Confirm
+        function showDeleteConfirm(id)
+            {
+                event.preventDefault();
+                swal({
+                    title: `Are you sure?`,
+                    text: 'You want to delete this product ?',
+                    buttons: true,
+                    dangerMode: true,
+                }).then((willDelete) => {
+                    if (willDelete) {
+                        deleteItem(id);
+                    }
+                });
+            }
+
+            $('#data_table').on('click', '.btn-delete[data-remote]', function (e) {
+                e.preventDefault();
+
+                const url = $(this).data('remote');
+                swal({
+                        title: `Are you sure want to delete ?`,
+                        // text: "If you delete this, it will be gone forever.",
+                        buttons: true,
+                        dangerMode: true,
+                    }).then((willDelete) => {
+                if (willDelete) {
+                    $.ajax({
+                        url: url,
+                        type: 'DELETE',
+                        dataType: 'json',
+                        data: {submit: true, _method: 'delete', _token: "{{ csrf_token() }}"}
+                    }).always(function (data) {
+                        // $('#data_table').DataTable().ajax.reload();
+                        if (data.success === true) {
+                            toastr.success(data.message, { positionClass: 'toast-bottom-full-width', });
+                        }else{
+                            toastr.error(data.message, { positionClass: 'toast-bottom-full-width', });
+                        }
+                    });
+                }
+                });
+            });
+
+
+    </script>
+    <script>
+        @if(Session::has('success'))
+        toastr.options =
+        {
+            "closeButton" : true,
+            "progressBar" : true
+        };
+
+        toastr.success("{{ session('success') }}");
+      @endif
+
+     @if(Session::has('error'))
+        toastr.options =
+        {
+            "closeButton" : true,
+            "progressBar" : true
+        };
+        toastr.error("{{ session('error') }}");
+     @endif
+    </script>
 
 @endsection

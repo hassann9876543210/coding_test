@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use Carbon\Carbon;
 use App\Models\Product;
 use App\Models\Variant;
 use Illuminate\Support\Str;
@@ -11,6 +10,8 @@ use Illuminate\Http\Request;
 use App\Models\ProductVariant;
 use Illuminate\Support\Facades\DB;
 use App\Models\ProductVariantPrice;
+use Yajra\DataTables\Facades\DataTables;
+
 
 class ProductController extends Controller
 {
@@ -19,10 +20,86 @@ class ProductController extends Controller
      *
      * @return \Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\View\Factory|\Illuminate\Http\Response|\Illuminate\View\View
      */
-    public function index()
+    // public function index()
+    // {
+    //     $products = Product::with('images','variants','variantPrices')->get();
+    //     return view('products.index', compact('products'));
+    // }
+
+    public function index(Request $request)
     {
-        $products = Product::with('images','variants','variantPrices')->get();
-        return view('products.index', compact('products'));
+        try {
+
+            if ($request->ajax()) {
+
+                $data = Product::with('images','variants','variantPrices')->get();
+
+                return Datatables::of($data)
+
+                    ->addColumn('product_title', function ($data) {
+                        $title = isset($data->title) ? $data->title : '--' . ',&nbsp;&nbsp;' ;
+                        $date = ',&nbsp;&nbsp;'  ."Created at :" . '&nbsp;&nbsp;' .  date('d-m-Y', strtotime($data->created_at )) ;
+                        return $title . $date;
+                    })
+
+                    ->addColumn('description', function ($data) {
+                        $result = isset($data->description) ? $data->description : '--' ;
+                        return Str::limit( $result, 50) ;
+                    })
+
+                    ->addColumn('variant_name', function ($data) {
+                        $variantData = [];
+                        foreach($data->variants as $key => $variant){
+                        //    $value =   isset($variant->title) ? $variant->title : '--' ;
+                            $value = isset($variant->pivot->variant) ? $variant->pivot->variant : '--' ;
+                            $variantData[] = $value ;
+                        }
+                        return $variantData ;
+
+                    })
+
+                    ->addColumn('variant_price', function ($data) {
+                        $prices = [];
+                        foreach($data->variantPrices as $key => $price){
+                            if( $price->product_id == $data->id){
+                                $value = number_format($price->price, 2);
+                                $prices[] = $value;
+                            }
+                        }
+                        return $prices;
+                    })
+
+                    ->addColumn('variant_stock', function ($data) {
+                        $stocks = [];
+                        foreach($data->variantPrices as $key => $stock){
+                            if( $stock->product_id == $data->id){
+                                $value =  $stock->stock;
+                                $prices[] = $value;
+                            }
+                        }
+                        return $prices;
+                    })
+
+                    ->addColumn('action', function ($data) {
+                            $show = '<a id="edit" href="' . route('product.show', $data->id) . ' " class="btn btn-sm btn-success edit" title="Edit"><i class="fa fa-eye"></i></a> ';
+
+                            $edit = '<a id="edit" href="' . route('product.edit', $data->id) . ' " class="btn btn-sm btn-primary edit" title="Edit"><i class="fa fa-edit"></i></a> ';
+
+                            $delete = '<button id="messageShow" class="btn btn-sm btn-danger btn-delete" data-remote=" ' . route('product.destroy', $data->id) . ' " title="Delete"><i class="fa fa-trash-alt"></i></button>';
+
+                            // $delete ='<a class="btn btn-sm btn-danger text-white" onclick="showDeleteConfirm(' . $data->id . ')" title="Delete"><i class="fa fa-trash-alt"></i></a>';
+
+                        return $show . $edit . $delete;
+                    })
+
+                    ->addIndexColumn()
+                    ->rawColumns(['product_title','description','variant_name', 'variant_price','variant_stock','action'])
+                    ->toJson();
+            }
+            return view('products.index');
+        } catch (\Exception $exception) {
+            return redirect()->back()->with('error', $exception->getMessage());
+        }
     }
 
     /**
@@ -213,20 +290,50 @@ class ProductController extends Controller
      * @param \App\Models\Product $product
      * @return \Illuminate\Http\Response
      */
-    public function destroy(Product $product)
+
+    //  public function destroy(Product $Product)
+    // {
+    //     try {
+    //         $Product->delete();
+
+    //         return response()->json([
+    //             'success' => true,
+    //             'message' => 'Product Deleted Successfully.',
+    //         ]);
+    //     } catch (\Exception $e) {
+    //         return back()->with('error', $e->getMessage());
+    //     }
+    // }
+    // public function destroy(Product $product)
+    // {
+    //     try {
+    //         $data = $product->delete();
+    //         return back()->with('message', 'Product deleted successfully');
+    //             if ($data) {
+    //                 ProductVariant::where('product_id', $product)->delete();
+    //                 ProductVariantPrice::where('product_id', $product)->delete();
+    //                 return redirect()->route('production.index')
+    //                 ->with('success', 'Production deleted successfully');
+    //             }
+
+    //     } catch (\Exception $exception) {
+    //         return redirect()->back()->with('error', $exception->getMessage());
+    //     }
+    // }
+    public function destroy($id)
     {
         try {
-            $data = $product->delete();
-            return back()->with('message', 'Product deleted successfully');
-                if ($data) {
-                    ProductVariant::where('product_id', $product)->delete();
-                    ProductVariantPrice::where('product_id', $product)->delete();
-                    return redirect()->route('production.index')
-                    ->with('success', 'Production deleted successfully');
-                }
-
+            $data = Product::findOrFail($id);
+            $data->delete();
+            return response()->json([
+                'success' => true,
+                'message' => 'Product deleted successfully.',
+            ]);
         } catch (\Exception $exception) {
-            return redirect()->back()->with('error', $exception->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Product delete failed',
+            ]);
         }
     }
 }
